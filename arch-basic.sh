@@ -156,6 +156,7 @@ mkinitcpio -p linux
 echo "# 3.3 Time zone"
 ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime
 hwclock --systohc
+systemctl enable systemd-timesyncd
 
 
 echo "# 3.4 Localization"
