@@ -107,7 +107,7 @@ echo "##########################################################################
 echo "#3.8 Boot loader"
 echo "###########################################################################"
 
-sudo pacman -S --needed grub efibootmgr dosfstools mtools os-prober
+sudo pacman -S --needed grub efibootmgr dosfstools mtools os-prober amd-ucode
 sleep 2
 grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 sleep 2
