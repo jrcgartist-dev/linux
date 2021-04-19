@@ -1,0 +1,171 @@
+#!/bin/bash
+#
+# Usage: Automagic Arch Install
+#
+# To run use make you edit the config below (lines 15 - 50)
+# and make sure this file is executable!
+# Then do "sh archify start"
+#
+# Script by Joris van Dijk | gitlab.com/jorisvandijk 
+#
+#          Published under GPL-3.0-or-later 
+
+# Applications to install 
+APPS="base 
+base-devel 
+linux linux-headers 
+linux-firmware 
+grub 
+efibootmgr 
+dosfstools 
+mtools 
+networkmanager 
+xorg
+openssh
+wpa_supplicant 
+alsa-utils 
+git 
+xfce4-terminal
+lightdm
+lightdm-gtk-greeter
+rofi
+i3-gaps 
+i3status 
+micro 
+firefox
+amd-ucode"
+
+# Global settings
+TIMEZONE="America/Sao_Paulo"
+HOSTNAME="arch"
+USR="kobe24"
+
+start (){
+	echo "Archify"
+	echo
+
+	# Check for network
+	read -p "Do you have an active internet connection? [y/N]: " netok
+	if ! [ $netok = 'y' ] && ! [ $netok = 'Y' ]
+	then 
+	    echo "Connect to the internet to continue..."
+	    exit
+	fi
+
+	# Keyboard layout
+	loadkeys us
+
+	# Set drive to install to
+	read -p "What drive are we installing Arch on? " -i "nvme0n1p" -e DRIVE
+
+	# to create the partitions programatically (rather than manually)
+	# https://superuser.com/a/984637
+	sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | fdisk /dev/$DRIVE
+	  o # clear the in memory partition table
+	  n # new partition
+	  p # primary partition
+	  1 # partition number 1
+	    # default - start at beginning of disk 
+	  +512M # 512 MB boot parttion
+	  n # new partition
+	  p # primary partition
+	  2 # partion number 2
+	    # default, start immediately after preceding partition
+	    # default, extend partition to end of disk
+	  a # make a partition bootable
+	  1 # bootable partition is partition 1 -- /dev/$DRIVE
+	  p # print the in-memory partition table
+	  w # write the partition table
+	  q # and we're done
+EOF
+
+	# Format the partitions
+	mkfs.ext4 /dev/${DRIVE}2
+	mkfs.fat -F32 /dev/${DRIVE}1
+
+	# Set up time
+	timedatectl set-ntp true
+	hwclock --systohc
+
+	# Mount the partitions
+	mount /dev/${DRIVE}2 /mnt
+	mkdir -pv /mnt/boot/efi
+	mount /dev/${DRIVE}1 /mnt/boot/efi
+
+	# Install Arch Linux
+	echo "Starting install.."
+	pacstrap /mnt $APPS
+
+	# Generate fstab
+	genfstab -U /mnt >> /mnt/etc/fstab
+
+	# Copy post-install system configuration script to new /root
+	cp -rfv archify /mnt
+	chmod a+x /mnt/archify
+
+	# Chroot into new system
+	echo "After chrooting into newly installed OS, please run \"sh archify res\""
+	echo "Press any key to chroot..."
+	read tmpvar
+	arch-chroot /mnt /bin/bash
+}
+
+res(){
+	echo "Archify Configurator"
+
+	# Set password
+	read -p "Please enter a password for your user AND root " -i "" -e PASSWORD
+
+	# Enable multi-lib for 32bit support (Steam)
+	sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+
+	# Set date time
+	ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
+	hwclock --systohc
+
+	# Set locale to en_US.UTF-8 UTF-8
+	sed -i '/en_US.UTF-8 UTF-8/s/^#//g' /etc/locale.gen
+	locale-gen
+	echo "LANG=en_US.UTF-8" >> /etc/locale.conf
+
+	# Set hostname
+	echo $HOSTNAME >> /etc/hostname
+	echo "127.0.1.1 $HOSTNAME.localdomain  $HOSTNAME" >> /etc/hosts
+
+	# Generate initramfs
+	mkinitcpio -P
+
+	# Install bootloader
+	grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=arch
+	grub-mkconfig -o /boot/grub/grub.cfg
+
+	# Create new user
+	useradd -m $USR
+	usermod -aG wheel,audio,video,optical,storage $USR
+	sed --in-place 's/^#\s*\(%wheel\s\+ALL=(ALL)\s\+NOPASSWD:\s\+ALL\)/\1/' /etc/sudoers
+
+	# Set root and user password
+	echo root:$PASSWORD | chpasswd
+	echo $USR:$PASSWORD | chpasswd
+
+	# Enable LightDM
+	systemctl enable lightdm
+
+	# Enable network service
+	systemctl enable NetworkManager.service
+
+	echo
+	echo "Configuration done. Please exit out of the chroot and reboot the system!"
+	exit
+}
+
+if [ -n "$1" ]; then
+  $1
+else
+  echo
+  echo "Please run this script with a flag!"
+  echo
+  echo "start     To start at the beginning."
+  echo "res      To continue after you've chrooted into Arch."
+  echo
+fi
