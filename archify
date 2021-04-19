@@ -33,7 +33,10 @@ i3-gaps
 i3status 
 micro 
 firefox
-amd-ucode"
+amd-ucode
+nvidia
+nvidia-utils
+nvidia-settings"
 
 # Global settings
 TIMEZONE="America/Sao_Paulo"
