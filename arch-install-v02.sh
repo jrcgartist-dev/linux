@@ -1,13 +1,5 @@
 #!/bin/bash
 
-DISK=/dev/nvme0n1
-DISK_EFI=/dev/nvme0n1p1
-DISK_MNT=/dev/nvme0n1p2
-TIMEZONE=America/Sao_Paulo
-LANGUAGE=en_US.UTF-8
-GRUBDIR=/mnt/boot/EFI
-
-
 bootstrapper_dialog() {
     DIALOG_RESULT=$(dialog --clear --stdout --backtitle "Arch bootstrapper" --no-shadow "$@" 2>/dev/null)
 }
@@ -65,6 +57,14 @@ bootstrapper_dialog --title "WARNING" --msgbox "This script will NUKE /dev/nvme0
 #### reset the screen ####
 ##########################
 reset
+
+
+DISK=/dev/nvme0n1
+DISK_EFI=/dev/nvme0n1p1
+DISK_MNT=/dev/nvme0n1p2
+TIMEZONE=America/Sao_Paulo
+LANGUAGE=en_US.UTF-8
+GRUBDIR=/mnt/boot/EFI
 
 
 #########################################
