@@ -1,6 +1,8 @@
 #!/bin/bash
 
 DISK=/dev/nvme0n1
+DISK_EFI=/dev/nvme0n1p1
+DISK_MNT=/dev/nvme0n1p2
 TIMEZONE=America/Sao_Paulo
 LANGUAGE=en_US.UTF-8
 GRUBDIR=/mnt/boot/EFI
@@ -74,10 +76,10 @@ sgdisk --zap-all $DISK
 echo "Creating EFI Partition"
 if [[ $LMV -eq 1 ]]; then
     printf "n\n1\n\n+512M\nef00\nw\ny\n" | gdisk $DISK
-    yes | mkfs.fat -F32 "${DISK}p1"
+    yes | mkfs.fat -F32 "${DISK_EFI}"
 else
     printf "n\n1\n\n+512M\nef00\nw\ny\n" | gdisk $DISK
-   yes | mkfs.fat -F32 "${DISK}p1"
+   yes | mkfs.fat -F32 "${DISK_EFI}"
 fi
 
 echo "Creating Main Partition"
@@ -85,12 +87,12 @@ if [[ $LMV -eq 1 ]]; then
     printf "n\n2\n\n\n8e00\nw\ny\n"| gdisk /dev/sda
 else
     printf "n\n2\n\n\n8300\nw\ny\n"| gdisk /dev/sda
-   yes | mkfs.fat -F32 "${DISK}p2"
+   yes | mkfs.fat -F32 "${DISK_MNT}"
 fi
 
 echo "Setting up LVM"
-pvcreate --dataalignment 1m "${DISK}p2"
-vgcreate vg00 "${DISK}p2"
+pvcreate --dataalignment 1m "${DISK_MNT}"
+vgcreate vg00 "${DISK_MNT}"
 lvcreate -L 30G vg00 -n lv_root
 lvcreate -l +100%FREE vg00 -n lv_home
 modprobe dm_mod
@@ -109,7 +111,7 @@ yes | mkfs.ext4 /dev/vg00/lv_home
 mount /dev/vg00/lv_root /mnt
 mkdir /mnt/{home,etc}
 mkdir -p $GRUBDIR
-mount "${DISK}p1" $GRUBDIR
+mount "${DISK_EFI}" $GRUBDIR
 mount /dev/vg00/lv_home /mnt/home
 
 yes '' | pacstrap -i /mnt base base-devel
