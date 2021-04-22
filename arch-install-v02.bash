@@ -77,6 +77,7 @@ mount /dev/vg00/lv_home /mnt/home
 
 yes '' | pacstrap -i /mnt base base-devel
 
+mkdir -p /mnt/etc/
 genfstab -U -p /mnt >> /mnt/etc/fstab
 
 ###############################
