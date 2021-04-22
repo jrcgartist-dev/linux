@@ -82,7 +82,7 @@ genfstab -U -p /mnt >> /mnt/etc/fstab
 ###############################
 #### Configure base system ####
 ###############################
-arch-chroot /mnt /bin/bash <<EOF
+arch-chroot /mnt /bin/bash
 
 echo "Setting and generating locale"
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
@@ -155,75 +155,9 @@ echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 echo "Enabling systemctls"
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd
-EOF
 
 
-#############################
-#### Installing a DE ####
-#############################
-if [[ $GNOME -eq 1 ]]; then
 
-arch-chroot /mnt /bin/bash <<EOF
-echo "Windows Management"
-pacman -Syu --needed xorg-server xorg-xinit
-
-echo "Nvidia Driver"
-pacman -Syu --needed nvidia nvidia-utils nvidia-settings opencl-nvidia
-nvidia-xconfig
-bash -c "echo blacklist nouveau > /etc/modprobe.d/blacklist-nvidia-nouveau.conf"
-
-echo "Gnome"
-pacman -Syu --needed gnome gnome-tweaks
-systemctl enable gdm
-EOF
-else
-arch-chroot /mnt /bin/bash <<EOF
-echo "Pass"
-EOF
-
-#############################
-#### Installing Paru ####
-#############################
-
-function packages_aur() {
-    print_step "packages_aur()"
-
-    if [ "$PACKAGES_AUR_INSTALL" == "true" ]; then
-        pacman -Syu --needed git
-
-        case "$PACKAGES_AUR_COMMAND" in
-            "yay" )
-                execute_aur "rm -rf /home/$user_name/.tmp/aur/$PACKAGES_AUR_COMMAND && mkdir -p /home/$user_name/.tmp/aur && cd /home/$user_name/.tmp/aur && git clone https://aur.archlinux.org/$PACKAGES_AUR_COMMAND.git && (cd $PACKAGES_AUR_COMMAND && makepkg -si --noconfirm) && rm -rf /home/$user_name/.tmp/aur/$PACKAGES_AUR_COMMAND"
-                ;;
-            "paru" | *)
-                execute_aur "rm -rf /home/$user_name/.tmp/aur/$PACKAGES_AUR_COMMAND && mkdir -p /home/$user_name/.tmp/aur && cd /home/$user_name/.tmp/aur && git clone https://aur.archlinux.org/$PACKAGES_AUR_COMMAND.git && (cd $PACKAGES_AUR_COMMAND && makepkg -si --noconfirm) && rm -rf /home/$user_name/.tmp/aur/$PACKAGES_AUR_COMMAND"
-                ;;
-        esac
-	echo "Pass"
-    fi
-}
-
-
-if [[ $AUR_PACK == "true" ]]; then
-
-arch-chroot /mnt /bin/bash <<EOF
-
-packages_aur
-
-EOF
-else
-arch-chroot /mnt /bin/bash <<EOF
-echo "Pass"
-EOF
-
-
-fi
-
-#################
-#### The end ####
-#################
-
-# https://github.com/picodotdev/alis/blob/master/alis-packages.sh
 
 printf "\e[1;32mDone! Type exit, umount -a and reboot.\e[0m"
 
